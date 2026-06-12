@@ -1,0 +1,24 @@
+{
+  "name": "weey-overlay-assistant",
+  "version": "0.1.0",
+  "description": "AI-powered Electron overlay assistant",
+  "main": "main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "start": "electron .",
+    "build:renderer": "vite build"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.54.0",
+    "electron-store": "^8.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "electron": "^31.3.1",
+    "vite": "^5.4.10",
+    "wait-on": "^8.0.1"
+  }
+}
