@@ -15,6 +15,7 @@ AI-powered local Electron screen overlay assistant prototype.
   - `Ctrl+Shift+I`: toggle interaction mode (needed to click into overlay UI)
 - Hotkeys are configurable in-app using Electron accelerator format
 - Optional startup behavior: start minimized and register to launch at login
-- Streams Claude response token-by-token into the overlay
-- Stores API key and settings with `electron-store`
+- Supports Anthropic Claude or Google Gemini vision keys from the same overlay
+- Streams the selected provider's response token-by-token into the overlay
+- Stores API keys and settings with `electron-store`
 

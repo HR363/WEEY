@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
 function App() {
+  const [provider, setProvider] = useState('anthropic');
   const [apiKey, setApiKey] = useState('');
+  const [apiKeys, setApiKeys] = useState({ anthropic: '', gemini: '' });
   const [interactive, setInteractive] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [startMinimized, setStartMinimized] = useState(false);
@@ -23,6 +25,11 @@ function App() {
     async function bootstrap() {
       const settings = await window.overlayApi.getSettings();
       const interactiveInfo = await window.overlayApi.getInteractive();
+      const nextProvider = settings.provider === 'gemini' ? 'gemini' : 'anthropic';
+      const nextApiKeys = settings.apiKeys || { anthropic: '', gemini: '' };
+
+      setProvider(nextProvider);
+      setApiKeys(nextApiKeys);
       setApiKey(settings.apiKey || '');
       setStartMinimized(!!settings.startMinimized);
       setHotkeys(
@@ -68,6 +75,10 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    setApiKey(apiKeys[provider] || '');
+  }, [provider, apiKeys]);
+
   const statusText = useMemo(() => {
     if (streaming) return 'Analyzing screen...';
     if (interactive) return 'Interactive mode ON (clickable)';
@@ -75,14 +86,24 @@ function App() {
   }, [streaming, interactive]);
 
   const saveApiKey = async () => {
-    await window.overlayApi.setApiKey(apiKey.trim());
-    setSettingsStatus('API key saved.');
+    const trimmed = apiKey.trim();
+    await window.overlayApi.setApiKey(provider, trimmed);
+    setApiKeys((prev) => ({
+      ...prev,
+      [provider]: trimmed
+    }));
+    setSettingsStatus(`${provider === 'gemini' ? 'Gemini' : 'Claude'} key saved.`);
   };
 
   const saveBehaviorSettings = async () => {
     const result = await window.overlayApi.updateSettings({
+      provider,
       startMinimized,
-      hotkeys
+      hotkeys,
+      apiKeys: {
+        ...apiKeys,
+        [provider]: apiKey.trim()
+      }
     });
 
     if (result?.hotkeys?.ok) {
@@ -110,6 +131,11 @@ function App() {
     }));
   };
 
+  const handleProviderChange = (nextProvider) => {
+    setProvider(nextProvider);
+    setSettingsStatus(nextProvider === 'gemini' ? 'Switched to Gemini.' : 'Switched to Claude.');
+  };
+
   return (
     <div className={`panel ${interactive ? 'interactive' : ''}`}>
       <div className="header">
@@ -118,11 +144,22 @@ function App() {
       </div>
 
       <div className="controls">
-        <label htmlFor="api-key">Claude API Key</label>
+        <label htmlFor="provider">AI Provider</label>
+        <select
+          id="provider"
+          value={provider}
+          onChange={(e) => handleProviderChange(e.target.value)}
+          disabled={!interactive || streaming}
+        >
+          <option value="anthropic">Anthropic Claude</option>
+          <option value="gemini">Google Gemini</option>
+        </select>
+
+        <label htmlFor="api-key">{provider === 'gemini' ? 'Gemini API Key' : 'Claude API Key'}</label>
         <input
           id="api-key"
           type="password"
-          placeholder="sk-ant-..."
+          placeholder={provider === 'gemini' ? 'AIza...' : 'sk-ant-...'}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           disabled={!interactive}
@@ -187,6 +224,7 @@ function App() {
       </div>
 
       <div className="hotkeys">
+        <div>Provider: {provider === 'gemini' ? 'Gemini' : 'Claude'}</div>
         <div>Analyze: {hotkeys.analyze}</div>
         <div>Show/Hide: {hotkeys.visibility}</div>
         <div>Interaction: {hotkeys.interaction}</div>

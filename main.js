@@ -1,6 +1,7 @@
 const path = require('path');
 const { app, BrowserWindow, globalShortcut, desktopCapturer, screen, ipcMain } = require('electron');
 const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const {
   getSettings,
   setApiKey,
@@ -139,7 +140,7 @@ async function capturePrimaryDisplayAsBase64Png() {
 
 async function streamClaudeResponseWithScreenshot(base64Png) {
   const settings = getSettings();
-  const apiKey = settings.apiKey;
+  const apiKey = settings.apiKeys?.anthropic || settings.apiKey;
 
   if (!apiKey) {
     throw new Error('Claude API key not set. Open interactive mode and save your key first.');
@@ -184,6 +185,49 @@ async function streamClaudeResponseWithScreenshot(base64Png) {
   }
 }
 
+async function streamGeminiResponseWithScreenshot(base64Png) {
+  const settings = getSettings();
+  const apiKey = settings.apiKeys?.gemini || settings.apiKey;
+
+  if (!apiKey) {
+    throw new Error('Gemini API key not set. Open interactive mode and save your key first.');
+  }
+
+  const client = new GoogleGenerativeAI(apiKey);
+  const model = client.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+  const result = await model.generateContentStream([
+    {
+      text: "You are a concise assistant watching the user's screen. Answer clearly and briefly. Analyze what is currently visible on screen and provide helpful concise guidance."
+    },
+    {
+      inlineData: {
+        data: base64Png,
+        mimeType: 'image/png'
+      }
+    }
+  ]);
+
+  for await (const chunk of result.stream) {
+    const text = chunk.text();
+    if (text) {
+      overlayWindow?.webContents.send('ai:token', text);
+    }
+  }
+}
+
+async function streamProviderResponseWithScreenshot(base64Png) {
+  const settings = getSettings();
+  const provider = settings.provider || 'anthropic';
+
+  if (provider === 'gemini') {
+    await streamGeminiResponseWithScreenshot(base64Png);
+    return;
+  }
+
+  await streamClaudeResponseWithScreenshot(base64Png);
+}
+
 async function runCaptureAnalyzeLoop() {
   if (!overlayWindow || overlayWindow.isDestroyed()) {
     return;
@@ -194,7 +238,7 @@ async function runCaptureAnalyzeLoop() {
 
   try {
     const base64Png = await capturePrimaryDisplayAsBase64Png();
-    await streamClaudeResponseWithScreenshot(base64Png);
+    await streamProviderResponseWithScreenshot(base64Png);
     overlayWindow.webContents.send('ai:done');
   } catch (error) {
     overlayWindow.webContents.send(
@@ -255,7 +299,8 @@ function setupIpc() {
   });
 
   ipcMain.handle('settings:set-api-key', (_event, apiKey) => {
-    setApiKey(apiKey);
+    const settings = getSettings();
+    setApiKey(settings.provider || 'anthropic', apiKey);
     return { ok: true };
   });
 

@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('overlayApi', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
-  setApiKey: (apiKey) => ipcRenderer.invoke('settings:set-api-key', apiKey),
+  setApiKey: (provider, apiKey) => ipcRenderer.invoke('settings:set-api-key', provider, apiKey),
   updateSettings: (settings) => ipcRenderer.invoke('settings:update', settings),
 
   setInteractive: (interactive) => ipcRenderer.invoke('overlay:set-interactive', interactive),
