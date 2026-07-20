@@ -22,7 +22,7 @@ function getOverlayBounds() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { workArea } = primaryDisplay;
   const width = 420;
-  const height = Math.max(320, workArea.height - 80);
+  const height = Math.max(360, workArea.height - 80);
   const x = workArea.x + workArea.width - width - 20;
   const y = workArea.y + 40;
 
@@ -149,9 +149,9 @@ async function streamClaudeResponseWithScreenshot(base64Png) {
   const anthropic = new Anthropic({ apiKey });
 
   const stream = anthropic.messages.stream({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 800,
-    system: "You are a concise assistant watching the user's screen. Answer clearly and briefly.",
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 1024,
+    system: "You are a concise AI assistant analyzing the user's screen. Provide brief, actionable insights.",
     messages: [
       {
         role: 'user',
@@ -198,7 +198,7 @@ async function streamGeminiResponseWithScreenshot(base64Png) {
 
   const result = await model.generateContentStream([
     {
-      text: "You are a concise assistant watching the user's screen. Answer clearly and briefly. Analyze what is currently visible on screen and provide helpful concise guidance."
+      text: "You are a concise AI assistant analyzing the user's screen. Analyze what is currently visible on screen and provide helpful concise guidance. Be brief and actionable."
     },
     {
       inlineData: {
@@ -218,14 +218,14 @@ async function streamGeminiResponseWithScreenshot(base64Png) {
 
 async function streamProviderResponseWithScreenshot(base64Png) {
   const settings = getSettings();
-  const provider = settings.provider || 'anthropic';
+  const provider = settings.provider || 'gemini';
 
-  if (provider === 'gemini') {
-    await streamGeminiResponseWithScreenshot(base64Png);
+  if (provider === 'anthropic') {
+    await streamClaudeResponseWithScreenshot(base64Png);
     return;
   }
 
-  await streamClaudeResponseWithScreenshot(base64Png);
+  await streamGeminiResponseWithScreenshot(base64Png);
 }
 
 async function runCaptureAnalyzeLoop() {
@@ -298,9 +298,8 @@ function setupIpc() {
     return getSettings();
   });
 
-  ipcMain.handle('settings:set-api-key', (_event, apiKey) => {
-    const settings = getSettings();
-    setApiKey(settings.provider || 'anthropic', apiKey);
+  ipcMain.handle('settings:set-api-key', (_event, provider, apiKey) => {
+    setApiKey(provider, apiKey);
     return { ok: true };
   });
 
